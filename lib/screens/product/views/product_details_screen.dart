@@ -56,8 +56,8 @@ class ProductDetailsScreen extends StatelessWidget {
                 ),
               ],
             ),
-            const ProductImages(
-              images: [productDemoImg1, productDemoImg2, productDemoImg3],
+            ProductImages(
+              images: const [placeholderProductImage],
             ),
             ProductInfo(
               brand: "LIPSY LONDON",
@@ -147,7 +147,7 @@ class ProductDetailsScreen extends StatelessWidget {
                         left: defaultPadding,
                         right: index == 4 ? defaultPadding : 0),
                     child: ProductCard(
-                      image: productDemoImg2,
+                      image: placeholderProductImage,
                       title: "Sleeveless Tiered Dobby Swing Dress",
                       brandName: "LIPSY LONDON",
                       price: 24.65,

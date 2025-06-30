@@ -7,10 +7,12 @@ class SearchForm extends StatelessWidget {
   const SearchForm({
     super.key,
     this.formKey,
+    this.controller,
     this.isEnabled = true,
     this.onSaved,
     this.validator,
     this.onChanged,
+    this.onSubmitted,
     this.onTabFilter,
     this.onFieldSubmitted,
     this.focusNode,
@@ -18,8 +20,10 @@ class SearchForm extends StatelessWidget {
   });
 
   final GlobalKey<FormState>? formKey;
+  final TextEditingController? controller;
   final bool isEnabled;
   final ValueChanged<String?>? onSaved, onChanged, onFieldSubmitted;
+  final ValueChanged<String>? onSubmitted;
   final FormFieldValidator<String>? validator;
   final VoidCallback? onTabFilter;
   final FocusNode? focusNode;
@@ -29,12 +33,15 @@ class SearchForm extends StatelessWidget {
   Widget build(BuildContext context) {
     return Form(
       child: TextFormField(
+        controller: controller,
         autofocus: autofocus,
         focusNode: focusNode,
         enabled: isEnabled,
         onChanged: onChanged,
         onSaved: onSaved,
-        onFieldSubmitted: onFieldSubmitted,
+        onFieldSubmitted: onSubmitted != null
+            ? (value) => onSubmitted!(value)
+            : onFieldSubmitted,
         validator: validator,
         textInputAction: TextInputAction.search,
         decoration: InputDecoration(
