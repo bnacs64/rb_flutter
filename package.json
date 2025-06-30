@@ -1,0 +1,47 @@
+{
+  "name": "grocery-store-supabase-backend",
+  "version": "1.0.0",
+  "description": "Comprehensive Supabase backend for grocery store application with admin interface",
+  "main": "index.js",
+  "scripts": {
+    "dev": "supabase start",
+    "reset": "supabase db reset",
+    "deploy": "supabase db push",
+    "types": "supabase gen types typescript > types/supabase.ts",
+    "types:local": "supabase gen types typescript --local > types/supabase.ts",
+    "seed": "supabase db seed",
+    "seed:remote": "supabase db seed --remote",
+    "status": "supabase status",
+    "stop": "supabase stop",
+    "link": "supabase link",
+    "migration:new": "supabase migration new",
+    "migration:up": "supabase migration up",
+    "functions:deploy": "supabase functions deploy",
+    "functions:serve": "supabase functions serve",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "supabase",
+    "grocery",
+    "ecommerce",
+    "backend",
+    "postgresql",
+    "flutter",
+    "admin",
+    "inventory",
+    "orders"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "supabase": "^1.123.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/grocery-store-backend.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/grocery-store-backend/issues"
+  },
+  "homepage": "https://github.com/yourusername/grocery-store-backend#readme"
+}
