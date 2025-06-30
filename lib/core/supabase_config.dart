@@ -4,8 +4,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class SupabaseConfig {
   // Your Supabase project credentials
   static const String supabaseUrl = 'https://nlizabhdxklazxgiflbb.supabase.co';
-  static const String supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5saXphYmhkeGtsYXp4Z2lmbGJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyOTE4NDksImV4cCI6MjA2Njg2Nzg0OX0.8ncdfAJfl4z8AHgYeokzH3xn1-OipXsBu3uhXfS5dFc';
-  
+  static const String supabaseAnonKey =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5saXphYmhkeGtsYXp4Z2lmbGJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyOTE4NDksImV4cCI6MjA2Njg2Nzg0OX0.8ncdfAJfl4z8AHgYeokzH3xn1-OipXsBu3uhXfS5dFc';
+
   /// Initialize Supabase client
   /// Call this in your main() function before runApp()
   static Future<void> initialize() async {
@@ -23,19 +24,19 @@ class SupabaseConfig {
       ),
     );
   }
-  
+
   /// Get the Supabase client instance
   static SupabaseClient get client => Supabase.instance.client;
-  
+
   /// Get the current user
   static User? get currentUser => client.auth.currentUser;
-  
+
   /// Check if user is authenticated
   static bool get isAuthenticated => currentUser != null;
-  
+
   /// Get current user ID
   static String? get currentUserId => currentUser?.id;
-  
+
   /// Sign out the current user
   static Future<void> signOut() async {
     await client.auth.signOut();
@@ -46,43 +47,50 @@ class SupabaseConfig {
 extension SupabaseExtension on SupabaseClient {
   /// Quick access to auth
   GoTrueClient get authClient => auth;
-  
+
   /// Quick access to database
-  PostgrestClient get database => from('');
-  
+  PostgrestClient get database => rest;
+
   /// Quick access to storage
   SupabaseStorageClient get storageClient => storage;
-  
+
   /// Quick access to realtime
   RealtimeClient get realtimeClient => realtime;
 }
 
 /// Common Supabase error messages
 class SupabaseErrors {
-  static const String networkError = 'Network error. Please check your connection.';
+  static const String networkError =
+      'Network error. Please check your connection.';
   static const String authError = 'Authentication failed. Please try again.';
-  static const String permissionError = 'You don\'t have permission to perform this action.';
+  static const String permissionError =
+      'You don\'t have permission to perform this action.';
   static const String notFoundError = 'The requested resource was not found.';
   static const String serverError = 'Server error. Please try again later.';
-  
+
   /// Get user-friendly error message from Supabase error
   static String getErrorMessage(dynamic error) {
     if (error == null) return 'An unknown error occurred.';
-    
+
     final errorMessage = error.toString().toLowerCase();
-    
-    if (errorMessage.contains('network') || errorMessage.contains('connection')) {
+
+    if (errorMessage.contains('network') ||
+        errorMessage.contains('connection')) {
       return networkError;
-    } else if (errorMessage.contains('auth') || errorMessage.contains('unauthorized')) {
+    } else if (errorMessage.contains('auth') ||
+        errorMessage.contains('unauthorized')) {
       return authError;
-    } else if (errorMessage.contains('permission') || errorMessage.contains('forbidden')) {
+    } else if (errorMessage.contains('permission') ||
+        errorMessage.contains('forbidden')) {
       return permissionError;
-    } else if (errorMessage.contains('not found') || errorMessage.contains('404')) {
+    } else if (errorMessage.contains('not found') ||
+        errorMessage.contains('404')) {
       return notFoundError;
-    } else if (errorMessage.contains('server') || errorMessage.contains('500')) {
+    } else if (errorMessage.contains('server') ||
+        errorMessage.contains('500')) {
       return serverError;
     }
-    
+
     return error.toString();
   }
 }
@@ -115,16 +123,19 @@ class SupabaseFunctions {
   static const String getCartItems = 'get_cart_items';
   static const String createOrderFromCart = 'create_order_from_cart';
   static const String getOrderDetails = 'get_order_details';
-  static const String getDeliveryZonesForAddress = 'get_delivery_zones_for_address';
-  static const String getAvailableDeliverySlots = 'get_available_delivery_slots';
+  static const String getDeliveryZonesForAddress =
+      'get_delivery_zones_for_address';
+  static const String getAvailableDeliverySlots =
+      'get_available_delivery_slots';
   static const String getUserProfile = 'get_user_profile';
-  
+
   // Admin functions
   static const String getSalesAnalytics = 'get_sales_analytics';
   static const String getCustomerAnalytics = 'get_customer_analytics';
   static const String getInventoryAlerts = 'get_inventory_alerts';
   static const String updateProductInventory = 'update_product_inventory';
-  static const String getOrderManagementDashboard = 'get_order_management_dashboard';
+  static const String getOrderManagementDashboard =
+      'get_order_management_dashboard';
   static const String updateOrderStatus = 'update_order_status';
   static const String adminGetOrderDetails = 'admin_get_order_details';
   static const String adminUpsertProduct = 'admin_upsert_product';

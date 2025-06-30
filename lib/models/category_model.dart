@@ -1,59 +1,65 @@
-class CategoryModel {
-  final String title;
-  final String? image, svgSrc;
-  final List<CategoryModel>? subCategories;
+/// Category model that matches Supabase database schema
+class Category {
+  final String id;
+  final String name;
+  final String? description;
+  final String? imageUrl;
+  final String? parentId;
+  final int sortOrder;
+  final bool isActive;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final List<Category>? subCategories;
 
-  CategoryModel({
-    required this.title,
-    this.image,
-    this.svgSrc,
+  Category({
+    required this.id,
+    required this.name,
+    this.description,
+    this.imageUrl,
+    this.parentId,
+    this.sortOrder = 0,
+    this.isActive = true,
+    required this.createdAt,
+    required this.updatedAt,
     this.subCategories,
   });
+
+  factory Category.fromJson(Map<String, dynamic> json) {
+    return Category(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      description: json['description'],
+      imageUrl: json['image_url'],
+      parentId: json['parent_id'],
+      sortOrder: json['sort_order'] ?? 0,
+      isActive: json['is_active'] ?? true,
+      createdAt: DateTime.parse(json['created_at'] ?? DateTime.now().toIso8601String()),
+      updatedAt: DateTime.parse(json['updated_at'] ?? DateTime.now().toIso8601String()),
+      subCategories: json['sub_categories'] != null
+          ? (json['sub_categories'] as List)
+              .map((subCat) => Category.fromJson(subCat))
+              .toList()
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'image_url': imageUrl,
+      'parent_id': parentId,
+      'sort_order': sortOrder,
+      'is_active': isActive,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+    };
+  }
+
+  /// Check if this is a root category (no parent)
+  bool get isRootCategory => parentId == null;
+
+  /// Check if this category has subcategories
+  bool get hasSubCategories => subCategories != null && subCategories!.isNotEmpty;
 }
-
-final List<CategoryModel> demoCategoriesWithImage = [
-  CategoryModel(title: "Woman’s", image: "https://i.imgur.com/5M89G2P.png"),
-  CategoryModel(title: "Man’s", image: "https://i.imgur.com/UM3GdWg.png"),
-  CategoryModel(title: "Kid’s", image: "https://i.imgur.com/Lp0D6k5.png"),
-  CategoryModel(title: "Accessories", image: "https://i.imgur.com/3mSE5sN.png"),
-];
-
-final List<CategoryModel> demoCategories = [
-  CategoryModel(
-    title: "On sale",
-    svgSrc: "assets/icons/Sale.svg",
-    subCategories: [
-      CategoryModel(title: "All Clothing"),
-      CategoryModel(title: "New In"),
-      CategoryModel(title: "Coats & Jackets"),
-      CategoryModel(title: "Dresses"),
-      CategoryModel(title: "Jeans"),
-    ],
-  ),
-  CategoryModel(
-    title: "Man’s & Woman’s",
-    svgSrc: "assets/icons/Man&Woman.svg",
-    subCategories: [
-      CategoryModel(title: "All Clothing"),
-      CategoryModel(title: "New In"),
-      CategoryModel(title: "Coats & Jackets"),
-    ],
-  ),
-  CategoryModel(
-    title: "Kids",
-    svgSrc: "assets/icons/Child.svg",
-    subCategories: [
-      CategoryModel(title: "All Clothing"),
-      CategoryModel(title: "New In"),
-      CategoryModel(title: "Coats & Jackets"),
-    ],
-  ),
-  CategoryModel(
-    title: "Accessories",
-    svgSrc: "assets/icons/Accessories.svg",
-    subCategories: [
-      CategoryModel(title: "All Clothing"),
-      CategoryModel(title: "New In"),
-    ],
-  ),
-];

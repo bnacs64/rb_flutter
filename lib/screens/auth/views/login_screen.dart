@@ -13,6 +13,12 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final GlobalKey<LogInFormState> _loginFormKey = GlobalKey<LogInFormState>();
+
+  void _handleLoginSuccess() {
+    Navigator.pushNamedAndRemoveUntil(
+        context, entryPointScreenRoute, ModalRoute.withName(logInScreenRoute));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,10 +43,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: defaultPadding / 2),
                   const Text(
-                    "Log in with your data that you intered during your registration.",
+                    "Log in with your data that you entered during your registration.",
                   ),
                   const SizedBox(height: defaultPadding),
-                  LogInForm(formKey: _formKey),
+                  LogInForm(
+                    key: _loginFormKey,
+                    formKey: _formKey,
+                    onLoginSuccess: _handleLoginSuccess,
+                  ),
                   Align(
                     child: TextButton(
                       child: const Text("Forgot password"),
@@ -51,17 +61,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   SizedBox(
-                    height: size.height > 700
-                        ? size.height * 0.1
-                        : defaultPadding,
+                    height:
+                        size.height > 700 ? size.height * 0.1 : defaultPadding,
                   ),
                   ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       if (_formKey.currentState!.validate()) {
-                        Navigator.pushNamedAndRemoveUntil(
-                            context,
-                            entryPointScreenRoute,
-                            ModalRoute.withName(logInScreenRoute));
+                        await _loginFormKey.currentState?.login();
                       }
                     },
                     child: const Text("Log in"),
