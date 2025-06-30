@@ -89,6 +89,30 @@ class CartSummary {
     );
   }
 
+  /// Create CartSummary from a list of CartItems
+  factory CartSummary.fromItems(
+    List<CartItem> items, {
+    double taxRate = 0.0,
+    double deliveryFee = 0.0,
+    double discountAmount = 0.0,
+  }) {
+    final subtotal =
+        items.fold<double>(0, (sum, item) => sum + item.totalPrice);
+    final taxAmount = subtotal * taxRate;
+    final totalAmount = subtotal + taxAmount + deliveryFee - discountAmount;
+    final totalItems = items.fold<int>(0, (sum, item) => sum + item.quantity);
+
+    return CartSummary(
+      items: items,
+      subtotal: subtotal,
+      taxAmount: taxAmount,
+      deliveryFee: deliveryFee,
+      discountAmount: discountAmount,
+      totalAmount: totalAmount,
+      totalItems: totalItems,
+    );
+  }
+
   /// Check if cart is empty
   bool get isEmpty => items.isEmpty;
 

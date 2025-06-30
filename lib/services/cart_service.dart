@@ -2,6 +2,18 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/supabase_config.dart';
 import '../models/cart_model.dart';
 
+/// Custom exception for cart service errors
+class CartServiceException implements Exception {
+  final String message;
+  final String? code;
+  final dynamic originalError;
+
+  CartServiceException(this.message, {this.code, this.originalError});
+
+  @override
+  String toString() => 'CartServiceException: $message';
+}
+
 /// Service for managing shopping cart
 class CartService {
   final SupabaseClient _client = SupabaseConfig.client;
@@ -9,9 +21,19 @@ class CartService {
   /// Add item to cart
   Future<void> addToCart(String productId, int quantity) async {
     try {
+      if (productId.isEmpty) {
+        throw CartServiceException('Product ID cannot be empty',
+            code: 'INVALID_PRODUCT_ID');
+      }
+      if (quantity <= 0) {
+        throw CartServiceException('Quantity must be greater than 0',
+            code: 'INVALID_QUANTITY');
+      }
+
       final userId = SupabaseConfig.currentUserId;
       if (userId == null) {
-        throw Exception('User not authenticated');
+        throw CartServiceException('User not authenticated',
+            code: 'NOT_AUTHENTICATED');
       }
 
       await _client.rpc('add_to_cart', params: {
@@ -19,35 +41,68 @@ class CartService {
         'product_id_param': productId,
         'quantity_param': quantity,
       });
+    } on PostgrestException catch (e) {
+      throw CartServiceException(
+        'Database error while adding item to cart: ${e.message}',
+        code: e.code,
+        originalError: e,
+      );
     } catch (e) {
-      throw Exception('Failed to add item to cart: $e');
+      if (e is CartServiceException) rethrow;
+      throw CartServiceException(
+        'Failed to add item to cart: $e',
+        originalError: e,
+      );
     }
   }
 
   /// Get cart items for current user
-  Future<CartSummary> getCartItems() async {
+  Future<CartSummary> getCartItems({
+    double taxRate = 0.0,
+    double deliveryFee = 0.0,
+    double discountAmount = 0.0,
+  }) async {
     try {
       final userId = SupabaseConfig.currentUserId;
       if (userId == null) {
-        throw Exception('User not authenticated');
+        throw CartServiceException('User not authenticated',
+            code: 'NOT_AUTHENTICATED');
       }
 
       final response = await _client.rpc('get_cart_items', params: {
         'user_id_param': userId,
       });
 
-      if (response == null) {
-        return CartSummary(
-          items: [],
-          subtotal: 0,
-          totalAmount: 0,
-          totalItems: 0,
+      if (response == null || (response as List).isEmpty) {
+        return CartSummary.fromItems(
+          [],
+          taxRate: taxRate,
+          deliveryFee: deliveryFee,
+          discountAmount: discountAmount,
         );
       }
 
-      return CartSummary.fromJson(response);
+      final items =
+          response.map<CartItem>((json) => CartItem.fromJson(json)).toList();
+
+      return CartSummary.fromItems(
+        items,
+        taxRate: taxRate,
+        deliveryFee: deliveryFee,
+        discountAmount: discountAmount,
+      );
+    } on PostgrestException catch (e) {
+      throw CartServiceException(
+        'Database error while fetching cart items: ${e.message}',
+        code: e.code,
+        originalError: e,
+      );
     } catch (e) {
-      throw Exception('Failed to fetch cart items: $e');
+      if (e is CartServiceException) rethrow;
+      throw CartServiceException(
+        'Failed to fetch cart items: $e',
+        originalError: e,
+      );
     }
   }
 
@@ -66,7 +121,10 @@ class CartService {
 
       await _client
           .from(SupabaseTables.shoppingCart)
-          .update({'quantity': quantity, 'updated_at': DateTime.now().toIso8601String()})
+          .update({
+            'quantity': quantity,
+            'updated_at': DateTime.now().toIso8601String()
+          })
           .eq('user_id', userId)
           .eq('product_id', productId);
     } catch (e) {
@@ -124,7 +182,8 @@ class CartService {
 
       if (response.isEmpty) return 0;
 
-      return response.fold<int>(0, (sum, item) => sum + (item['quantity'] as int));
+      return response.fold<int>(
+          0, (sum, item) => sum + (item['quantity'] as int));
     } catch (e) {
       throw Exception('Failed to get cart item count: $e');
     }
@@ -169,6 +228,66 @@ class CartService {
       return response['quantity'] as int;
     } catch (e) {
       return 0;
+    }
+  }
+
+  /// Get cart total value
+  Future<double> getCartTotal() async {
+    try {
+      final cartSummary = await getCartItems();
+      return cartSummary.totalAmount;
+    } catch (e) {
+      throw CartServiceException(
+        'Failed to get cart total: $e',
+        originalError: e,
+      );
+    }
+  }
+
+  /// Update multiple cart items at once
+  Future<void> updateMultipleCartItems(
+      Map<String, int> productQuantities) async {
+    try {
+      final userId = SupabaseConfig.currentUserId;
+      if (userId == null) {
+        throw CartServiceException('User not authenticated',
+            code: 'NOT_AUTHENTICATED');
+      }
+
+      for (final entry in productQuantities.entries) {
+        await updateCartItemQuantity(entry.key, entry.value);
+      }
+    } catch (e) {
+      if (e is CartServiceException) rethrow;
+      throw CartServiceException(
+        'Failed to update multiple cart items: $e',
+        originalError: e,
+      );
+    }
+  }
+
+  /// Validate cart items (check availability and pricing)
+  Future<List<String>> validateCartItems() async {
+    try {
+      final cartSummary = await getCartItems();
+      final issues = <String>[];
+
+      for (final item in cartSummary.items) {
+        if (!item.isAvailable) {
+          issues.add('${item.productName} is no longer available');
+        }
+        if (item.quantity > item.availableQuantity) {
+          issues.add(
+              '${item.productName}: Only ${item.availableQuantity} items available, but ${item.quantity} requested');
+        }
+      }
+
+      return issues;
+    } catch (e) {
+      throw CartServiceException(
+        'Failed to validate cart items: $e',
+        originalError: e,
+      );
     }
   }
 }

@@ -2,6 +2,18 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/supabase_config.dart';
 import '../models/user_model.dart';
 
+/// Custom exception for auth service errors
+class AuthServiceException implements Exception {
+  final String message;
+  final String? code;
+  final dynamic originalError;
+
+  AuthServiceException(this.message, {this.code, this.originalError});
+
+  @override
+  String toString() => 'AuthServiceException: $message';
+}
+
 /// Service for authentication and user management
 class AuthService {
   final SupabaseClient _client = SupabaseConfig.client;
@@ -14,6 +26,18 @@ class AuthService {
     String? phone,
   }) async {
     try {
+      if (email.isEmpty) {
+        throw AuthServiceException('Email is required', code: 'INVALID_EMAIL');
+      }
+      if (password.isEmpty) {
+        throw AuthServiceException('Password is required',
+            code: 'INVALID_PASSWORD');
+      }
+      if (password.length < 6) {
+        throw AuthServiceException('Password must be at least 6 characters',
+            code: 'PASSWORD_TOO_SHORT');
+      }
+
       final response = await _client.auth.signUp(
         email: email,
         password: password,
@@ -29,8 +53,18 @@ class AuthService {
       }
 
       return null;
+    } on AuthException catch (e) {
+      throw AuthServiceException(
+        'Authentication error: ${e.message}',
+        code: e.statusCode,
+        originalError: e,
+      );
     } catch (e) {
-      throw Exception('Failed to sign up: $e');
+      if (e is AuthServiceException) rethrow;
+      throw AuthServiceException(
+        'Failed to sign up: $e',
+        originalError: e,
+      );
     }
   }
 
@@ -102,7 +136,9 @@ class AuthService {
 
       if (fullName != null) updateData['full_name'] = fullName;
       if (phone != null) updateData['phone'] = phone;
-      if (dateOfBirth != null) updateData['date_of_birth'] = dateOfBirth.toIso8601String();
+      if (dateOfBirth != null) {
+        updateData['date_of_birth'] = dateOfBirth.toIso8601String();
+      }
       if (avatarUrl != null) updateData['avatar_url'] = avatarUrl;
       if (preferences != null) updateData['preferences'] = preferences;
 
@@ -126,14 +162,89 @@ class AuthService {
     }
   }
 
-  /// Update password
-  Future<void> updatePassword(String newPassword) async {
+  /// Change password with current password verification
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
     try {
+      if (currentPassword.isEmpty) {
+        throw AuthServiceException('Current password is required',
+            code: 'INVALID_CURRENT_PASSWORD');
+      }
+      if (newPassword.isEmpty) {
+        throw AuthServiceException('New password is required',
+            code: 'INVALID_NEW_PASSWORD');
+      }
+      if (newPassword.length < 6) {
+        throw AuthServiceException('New password must be at least 6 characters',
+            code: 'PASSWORD_TOO_SHORT');
+      }
+
+      final currentUser = _client.auth.currentUser;
+      if (currentUser == null || currentUser.email == null) {
+        throw AuthServiceException('User not authenticated',
+            code: 'NOT_AUTHENTICATED');
+      }
+
+      // Verify current password by attempting to sign in
+      try {
+        await _client.auth.signInWithPassword(
+          email: currentUser.email!,
+          password: currentPassword,
+        );
+      } catch (e) {
+        throw AuthServiceException('Current password is incorrect',
+            code: 'INVALID_CURRENT_PASSWORD');
+      }
+
+      // Update to new password
       await _client.auth.updateUser(
         UserAttributes(password: newPassword),
       );
+    } on AuthServiceException {
+      rethrow;
+    } on AuthException catch (e) {
+      throw AuthServiceException(
+        'Authentication error: ${e.message}',
+        code: e.statusCode,
+        originalError: e,
+      );
     } catch (e) {
-      throw Exception('Failed to update password: $e');
+      throw AuthServiceException(
+        'Failed to change password: $e',
+        originalError: e,
+      );
+    }
+  }
+
+  /// Update password (for password reset flow)
+  Future<void> updatePassword(String newPassword) async {
+    try {
+      if (newPassword.isEmpty) {
+        throw AuthServiceException('New password is required',
+            code: 'INVALID_PASSWORD');
+      }
+      if (newPassword.length < 6) {
+        throw AuthServiceException('Password must be at least 6 characters',
+            code: 'PASSWORD_TOO_SHORT');
+      }
+
+      await _client.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+    } on AuthException catch (e) {
+      throw AuthServiceException(
+        'Authentication error: ${e.message}',
+        code: e.statusCode,
+        originalError: e,
+      );
+    } catch (e) {
+      if (e is AuthServiceException) rethrow;
+      throw AuthServiceException(
+        'Failed to update password: $e',
+        originalError: e,
+      );
     }
   }
 
@@ -148,6 +259,59 @@ class AuthService {
 
   /// Listen to auth state changes
   Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
+
+  /// Delete user account
+  Future<void> deleteAccount({String? password}) async {
+    try {
+      final currentUser = _client.auth.currentUser;
+      if (currentUser == null) {
+        throw AuthServiceException('User not authenticated',
+            code: 'NOT_AUTHENTICATED');
+      }
+
+      // If password is provided, verify it first
+      if (password != null &&
+          password.isNotEmpty &&
+          currentUser.email != null) {
+        try {
+          await _client.auth.signInWithPassword(
+            email: currentUser.email!,
+            password: password,
+          );
+        } catch (e) {
+          throw AuthServiceException('Password verification failed',
+              code: 'INVALID_PASSWORD');
+        }
+      }
+
+      final userId = currentUser.id;
+
+      // Delete user profile and related data (handled by CASCADE in database)
+      await _client.from(SupabaseTables.userProfiles).delete().eq('id', userId);
+
+      // Sign out the user
+      await _client.auth.signOut();
+    } on AuthServiceException {
+      rethrow;
+    } on AuthException catch (e) {
+      throw AuthServiceException(
+        'Authentication error: ${e.message}',
+        code: e.statusCode,
+        originalError: e,
+      );
+    } on PostgrestException catch (e) {
+      throw AuthServiceException(
+        'Database error while deleting account: ${e.message}',
+        code: e.code,
+        originalError: e,
+      );
+    } catch (e) {
+      throw AuthServiceException(
+        'Failed to delete account: $e',
+        originalError: e,
+      );
+    }
+  }
 
   /// Add customer address
   Future<CustomerAddress> addCustomerAddress({
